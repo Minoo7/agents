@@ -399,6 +399,32 @@ describe("createWorker transform-only mode (build + load + fetch)", () => {
     expect(await response.text()).toBe("root,internal");
   });
 
+  it.each([false, true])(
+    "loads a directory manifest entry with bundle=%s",
+    async (bundle) => {
+      const response = await buildAndFetch({
+        files: {
+          "index.js":
+            'import { value } from "fixture/constants"; export default { fetch() { return new Response(value); } };',
+          "node_modules/fixture/package.json": JSON.stringify({
+            name: "fixture"
+          }),
+          "node_modules/fixture/constants/package.json": JSON.stringify({
+            module: "../dist/es2015/constants.js",
+            main: "../dist/es5/constants.js"
+          }),
+          "node_modules/fixture/dist/es2015/constants.js":
+            'export const value = "esm constants";',
+          "node_modules/fixture/dist/es5/constants.js":
+            'exports.value = "cjs constants";'
+        },
+        entryPoint: "index.js",
+        bundle
+      });
+      expect(await response.text()).toBe("esm constants");
+    }
+  );
+
   it("does not resolve subpaths an exports map leaves out", async () => {
     const result = await createWorker({
       files: {
