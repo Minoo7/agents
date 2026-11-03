@@ -24,24 +24,27 @@ describe("directory package manifests", () => {
     });
   });
 
-  it("resolves parent-relative targets and chained directory manifests", () => {
-    const files = new InMemoryFileSystem({
-      [`${root}/package.json`]: manifest({ name: "fixture" }),
-      [`${root}/constants/package.json`]: manifest({
-        module: "../dist/es2015/constants",
-        main: "../dist/es5/constants.js"
-      }),
-      [`${root}/dist/es2015/constants/package.json`]: manifest({
-        main: "./value"
-      }),
-      [`${root}/dist/es2015/constants/value.js`]: "export default 'esm';",
-      [`${root}/dist/es5/constants.js`]: "export default 'cjs';"
-    });
-    expect(resolveModule("fixture/constants", { files })).toEqual({
-      path: `${root}/dist/es2015/constants/value.js`,
-      external: false
-    });
-  });
+  it.each([
+    { module: "../dist/es2015/constants", main: "../dist/es5/constants.js" },
+    { main: "../dist/es2015/constants" }
+  ])(
+    "resolves parent-relative targets and chained directory manifests: %j",
+    (entry) => {
+      const files = new InMemoryFileSystem({
+        [`${root}/package.json`]: manifest({ name: "fixture" }),
+        [`${root}/constants/package.json`]: manifest(entry),
+        [`${root}/dist/es2015/constants/package.json`]: manifest({
+          main: "./value"
+        }),
+        [`${root}/dist/es2015/constants/value.js`]: "export default 'esm';",
+        [`${root}/dist/es5/constants.js`]: "export default 'cjs';"
+      });
+      expect(resolveModule("fixture/constants", { files })).toEqual({
+        path: `${root}/dist/es2015/constants/value.js`,
+        external: false
+      });
+    }
+  );
 
   it.each(["", ".js"])(
     "prefers a file with suffix '%s' over a directory",
