@@ -1,5 +1,11 @@
 # @cloudflare/agents
 
+## 0.33.1
+
+### Patch Changes
+
+- [#2807](https://github.com/cloudflare/agents/pull/2807) [`1f3bd92`](https://github.com/cloudflare/agents/commit/1f3bd9215239ccd973da87506d4771ac13a20bd2) Thanks [@ben-reitz](https://github.com/ben-reitz)! - The pi `web_search` and `web_fetch` tools give code mode scripts their results as objects.
+
 ## 0.33.0
 
 This release adds support for [Pi 1.5](https://github.com/earendil-works/pi/blob/v1.5.0/packages/durable/CHANGELOG.md#150---2026-11-02), which makes `PiHarness` much faster and lighter on memory, and lets you continue a run that ended without an answer.
