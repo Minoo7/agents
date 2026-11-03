@@ -74,7 +74,13 @@ export function resolveModule(
 
   // Handle relative imports
   if (specifier.startsWith(".") || specifier.startsWith("/")) {
-    const resolved = resolveRelative(specifier, importer, files, extensions);
+    const resolved = resolveRelative(
+      specifier,
+      importer,
+      files,
+      extensions,
+      conditions
+    );
     if (resolved) {
       return { path: resolved, external: false };
     }
@@ -95,7 +101,8 @@ function resolveRelative(
   specifier: string,
   importer: string,
   files: FileSystem,
-  extensions: string[]
+  extensions: string[],
+  conditions: string[]
 ): string | undefined {
   // Get the directory of the importer
   const importerDir = getDirectory(importer);
@@ -103,7 +110,7 @@ function resolveRelative(
   // Resolve the path
   const resolved = joinPaths(importerDir, specifier);
 
-  return resolveWithExtensions(resolved, files, extensions);
+  return resolveWithExtensions(resolved, files, extensions, conditions);
 }
 
 /**
@@ -179,7 +186,8 @@ function resolvePackage(
   const indexPath = resolveWithExtensions(
     `node_modules/${packageName}${subpath ? `/${subpath}` : ""}`,
     files,
-    extensions
+    extensions,
+    conditions
   );
   if (indexPath) {
     return { path: indexPath, external: false };
@@ -195,7 +203,9 @@ function resolvePackage(
 function resolveWithExtensions(
   path: string,
   files: FileSystem,
-  extensions: string[]
+  extensions: string[],
+  conditions: string[],
+  visited = new Set<string>()
 ): string | undefined {
   // Normalize the path
   const normalized = normalizePath(path);
@@ -210,6 +220,36 @@ function resolveWithExtensions(
     const withExt = normalized + ext;
     if (files.read(withExt) !== null) {
       return withExt;
+    }
+  }
+
+  if (visited.has(normalized)) return undefined;
+  visited.add(normalized);
+
+  const packageJsonPath = `${normalized}/package.json`;
+  const packageJson = files.read(packageJsonPath);
+  if (packageJson !== null) {
+    let pkg: Record<string, unknown>;
+    try {
+      pkg = JSON.parse(packageJson) as Record<string, unknown>;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid package.json at ${packageJsonPath}: ${detail}`);
+    }
+    const entry = resolveExports.legacy(pkg, {
+      fields: conditions.includes("style")
+        ? ["style", "module", "main"]
+        : ["module", "main"]
+    });
+    if (typeof entry === "string") {
+      const resolved = resolveWithExtensions(
+        joinPaths(normalized, entry),
+        files,
+        extensions,
+        conditions,
+        visited
+      );
+      if (resolved) return resolved;
     }
   }
 
